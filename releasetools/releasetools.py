@@ -28,8 +28,10 @@ NX_BL_VERSION = '2022.10-g4f111ee6dc'
 
 def FullOTA_PostValidate(info):
   if 'INSTALL/bin/resize2fs_static' in info.input_zip.namelist():
-    info.script.AppendExtra('run_program("/tmp/install/bin/resize2fs_static", "' + APP_PART + '");');
-    info.script.AppendExtra('run_program("/tmp/install/bin/resize2fs_static", "' + VENDOR_PART + '");');
+    info.script.AppendExtra(
+        f'run_program("/tmp/install/bin/resize2fs_static", "{APP_PART}");');
+    info.script.AppendExtra(
+        f'run_program("/tmp/install/bin/resize2fs_static", "{VENDOR_PART}");');
 
 def FullOTA_Assertions(info):
   if 'RADIO/bl33.bin' in info.input_zip.namelist():
@@ -46,12 +48,11 @@ def CopyBlobs(input_zip, output_zip):
     f = info.filename
     if f.startswith("RADIO/") and (f.__len__() > len("RADIO/")):
       fn = f[6:]
-      common.ZipWriteStr(output_zip, "firmware-update/" + fn, input_zip.read(f))
+      common.ZipWriteStr(output_zip, f"firmware-update/{fn}", input_zip.read(f))
 
 def AddBootloaderAssertion(info, input_zip):
   android_info = input_zip.read("OTA/android-info.txt").decode('utf-8')
-  m = re.search(r"require\s+version-bootloader\s*=\s*(\S+)", android_info)
-  if m:
+  if m := re.search(r"require\s+version-bootloader\s*=\s*(\S+)", android_info):
     bootloaders = m.group(1).split("|")
     if "*" not in bootloaders:
       info.script.AssertSomeBootloader(*bootloaders)
@@ -60,37 +61,55 @@ def AddBootloaderAssertion(info, input_zip):
 def AddBootloaderFlash(info, input_zip):
   """ nx """
   info.script.AppendExtra('  ifelse(')
-  info.script.AppendExtra('    getprop("ro.bootloader") == "' + NX_BL_VERSION + '",')
+  info.script.AppendExtra(f'    getprop("ro.bootloader") == "{NX_BL_VERSION}",')
   info.script.AppendExtra('    (')
   info.script.AppendExtra('      ui_print("Correct bootloader already installed for " + getprop(ro.hardware));')
   info.script.AppendExtra('    ),')
   info.script.AppendExtra('    (')
   info.script.AppendExtra('      ui_print("Flashing updated bootloader for " + getprop(ro.hardware));')
-  info.script.AppendExtra('      run_program("/system/bin/mkdir", "-p", "' + NX_FILES + '");')
-  info.script.AppendExtra('      run_program("/system/bin/mount", "/dev/block/by-name/hos_data", "' + NX_FILES + '");')
+  info.script.AppendExtra(
+      f'      run_program("/system/bin/mkdir", "-p", "{NX_FILES}");')
+  info.script.AppendExtra(
+      f'      run_program("/system/bin/mount", "/dev/block/by-name/hos_data", "{NX_FILES}");'
+  )
 
   """ clean old bootloader """
   info.script.AppendExtra('      ifelse(')
-  info.script.AppendExtra('        read_file("' + NX_FILES + '/switchroot/android/bl31.bin"),')
+  info.script.AppendExtra(
+      f'        read_file("{NX_FILES}/switchroot/android/bl31.bin"),')
   info.script.AppendExtra('        (')
   info.script.AppendExtra('          ui_print("Your bootloader is already compatible with L4T-Loader");')
   info.script.AppendExtra('        ),')
   info.script.AppendExtra('        (')
   info.script.AppendExtra('          ui_print("Removing coreboot, as it is unused by L4T-Loader");')
-  info.script.AppendExtra('          run_program("/system/bin/rm", "-f", "' + NX_FILES + '/switchroot/android/coreboot.rom");')
+  info.script.AppendExtra(
+      f'          run_program("/system/bin/rm", "-f", "{NX_FILES}/switchroot/android/coreboot.rom");'
+  )
   info.script.AppendExtra('        )')
   info.script.AppendExtra('      );')
 
   """ flash uploaded bl files """
-  info.script.AppendExtra('      package_extract_file("firmware-update/bl31.bin", "' + NX_FILES + '/switchroot/android/bl31.bin");')
-  info.script.AppendExtra('      package_extract_file("firmware-update/bl33.bin", "' + NX_FILES + '/switchroot/android/bl33.bin");')
-  info.script.AppendExtra('      package_extract_file("firmware-update/bootlogo_android.bmp", "' + NX_FILES + '/switchroot/android/bootlogo_android.bmp");')
-  info.script.AppendExtra('      package_extract_file("firmware-update/icon_android_hue.bmp", "' + NX_FILES + '/switchroot/android/icon_android_hue.bmp");')
-  info.script.AppendExtra('      package_extract_file("firmware-update/00-android.ini", "' + NX_FILES + '/bootloader/ini/00-android.ini");')
-  info.script.AppendExtra('      run_program("/system/bin/umount", "' + NX_FILES + '");')
+  info.script.AppendExtra(
+      f'      package_extract_file("firmware-update/bl31.bin", "{NX_FILES}/switchroot/android/bl31.bin");'
+  )
+  info.script.AppendExtra(
+      f'      package_extract_file("firmware-update/bl33.bin", "{NX_FILES}/switchroot/android/bl33.bin");'
+  )
+  info.script.AppendExtra(
+      f'      package_extract_file("firmware-update/bootlogo_android.bmp", "{NX_FILES}/switchroot/android/bootlogo_android.bmp");'
+  )
+  info.script.AppendExtra(
+      f'      package_extract_file("firmware-update/icon_android_hue.bmp", "{NX_FILES}/switchroot/android/icon_android_hue.bmp");'
+  )
+  info.script.AppendExtra(
+      f'      package_extract_file("firmware-update/00-android.ini", "{NX_FILES}/bootloader/ini/00-android.ini");'
+  )
+  info.script.AppendExtra(
+      f'      run_program("/system/bin/umount", "{NX_FILES}");')
   info.script.AppendExtra('    )')
   info.script.AppendExtra('  );')
 
 
   """ flash dtb """
-  info.script.AppendExtra('  package_extract_file("install/nx-plat.dtimg", "' + DTB_PART + '");')
+  info.script.AppendExtra(
+      f'  package_extract_file("install/nx-plat.dtimg", "{DTB_PART}");')
